@@ -84,6 +84,18 @@ DataSource.prototype = {
 
 */
 
+function getDataFromServer(lastDateTimestamp, callback) {
+    $.ajax('/statistic', {
+        type: 'POST',
+        data: {
+            lastDate: lastDateTimestamp
+        },
+        success: function (response) {
+            callback(response);
+        }
+    });
+}
+
 function DataSource(onDataReceive) {
     this.lastDate = 0;
     this.onDataReceive = onDataReceive;
@@ -97,22 +109,16 @@ DataSource.prototype = {
         var self = this;
 
         setTimeout(function() {
-            $.ajax('/statistic', {
-                type: 'POST',
-                data: {
-                    lastDate: self.lastDate
-                },
-                success: function (response) {
-                    var d = response.data;
+            self.tick();
+            getDataFromServer(self.lastDate, function (response) {
+                var d = response.data;
 
-                    self.lastDate = +d[d.length - 1].datetime;
+                self.lastDate = +d[d.length - 1].datetime;
 
-                    self.onDataReceive && self.onDataReceive(
-                        transformDataArrayFromServerFormat(d)
-                    );
+                self.onDataReceive && self.onDataReceive(
+                    transformDataArrayFromServerFormat(d)
+                );
 
-                    self.tick();
-                }
             });
         }, 1000);
     }

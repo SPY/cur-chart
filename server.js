@@ -39,7 +39,7 @@ function addSeconds(data, seconds) {
 }
 
 function genNextValue(prevValue) {
-    return prevValue * (1 + (Math.random() - 0.3) / 10)
+    return prevValue * (1 + (Math.random() - 0.5) / 10)
 }
 
 DataSource.prototype = {
@@ -47,8 +47,8 @@ DataSource.prototype = {
         var self = this;
 
         this.timeoutHandler = setTimeout(function() {
-            self.onTick();
             self.tick();
+            self.onTick();
         }, 1000);
     },
 

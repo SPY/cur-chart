@@ -34,7 +34,10 @@ Chart.prototype = {
             max = Math.max(this.value, max);
             forRender.push(point);
         });
+        
+        var forRemove = Math.max(0, data.length - (this.o.count - this.points.length));
 
+        this.erasePoints(forRemove);
         this.updateScale(min, max);
         $.each(forRender, function() {
             self.renderPoint(this);        
@@ -52,10 +55,10 @@ Chart.prototype = {
         var bot = this.o.bot + 20;
         if ( this.lastPoint ) {
             var x = this.lastPoint.pos().x + this.o.step;
-            point.render(this, x, this.getPointY(point), bot, this.lastPoint);
+            point.render(this, x, this.getPointY(point), this.lastPoint);
         }
         else {
-            point.render(this, this.o.scaleWidth + 1, this.getPointY(point), bot);
+            point.render(this, this.o.scaleWidth + 1, this.getPointY(point));
         }
         this.lastPoint = point;
     },
@@ -90,10 +93,26 @@ Chart.prototype = {
     updatePointsPosition: function() {
         var self = this;
         $.each(this.points, function() {
-            this.move(this.pos().x, self.getPointY(this));
+            this.move(0, -this.pos().y + self.getPointY(this));
         });
     },
     
+    erasePoints: function(num) {
+        var self = this,
+            trash = this.points.splice(0, num),
+            min = Infinity, max = 0;
+        $.each(trash, function() {
+            this.remove();
+        });
+        $.each(this.points, function() {
+           min = Math.min(min, this.value);
+           max = Math.max(max, this.value);
+           this.move(-(self.o.step * num), 0);
+        });
+        this.min = min;
+        this.max = max;
+    },
+
     getPointY: function(point) {
         var h = this.o.bot,
             diff = point.value - this.minDisplay,
@@ -222,7 +241,7 @@ Point.prototype = {
      * @arg labelY Number Y-cordinate of label
      * @arg prev Point Previous point on chart
      */
-    render: function(c, x, y, labelY, prev) {
+    render: function(c, x, y, prev) {
         var p = c.paper;
         this.setPos(x, y);
         this.pointEl = p.set();
@@ -235,11 +254,9 @@ Point.prototype = {
             this.line = line;
         }
 
-        var l = this.label = p.text(x, labelY, this.formatTime(this.datetime));
-        l.transform('r90');
+        var l = this.renderLabel(p, x);
         
         this.pointEl.push(e, l);
-        this.origin = { x: x, y: y };
         return this.pointEl;
     },
 
@@ -252,7 +269,15 @@ Point.prototype = {
         return e;
     },
 
-    move: function(x, y) {
+    renderLabel: function(p, x) {
+        var l = this.label = p.text(x, this.chart.o.bot + 20, this.formatTime(this.datetime));
+        l.transform('r90');
+        return l;        
+    },
+
+    move: function(dx, dy) {
+        var x = this.position.x + dx,
+            y = this.position.y + dy;
         this.circle.remove();
         this.renderPoint(this.chart.paper, x, y);
         this.setPos(x, y);
@@ -260,10 +285,23 @@ Point.prototype = {
             this.line.remove();
             this.line = this.chart.line(this.prev.pos(), this.pos());
         }
+        this.label.remove();
+        this.renderLabel(this.chart.paper, x);
+    },
+
+    remove: function() {
+        this.pointEl.remove();
+        this.circle.remove();
+        this.line && this.line.remove();
+        this.label.remove();
     },
 
     formatTime: function(time) {
-        return time.getMinutes() + ':' + time.getSeconds();
+        var m = time.getMinutes(),
+            s = time.getSeconds();
+        m = m > 9 ? m : '0' + m;
+        s = s > 9 ? s : '0' + s;
+        return m  + ':' + s;
     },
 
     onHover: function() {
