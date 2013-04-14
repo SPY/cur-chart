@@ -8,9 +8,7 @@ var Chart = function(canvasSelector, options) {
     }
     o.width = o.width || el.width();
     o.height = o.height || el.height();
-    o.count = o.count || 25;
-    o.step = o.width / o.count;
-    this.o = o;
+    this.calcOptions(o);
     this.paper = Raphael(el.get(0), o.width, o.height);
     this.points = [];
     this.startLoading();
@@ -52,16 +50,16 @@ Chart.prototype = {
      * Add point to chart
      */
     renderPoint: function(point) {
-	if ( this.lastPoint ) {
-	    var x = this.lastPoint.pos().x + this.o.step;
-	    point.render(this.paper, x, this.getPointY(point));
+        if ( this.lastPoint ) {
+            var x = this.lastPoint.pos().x + this.o.step;
+            point.render(this.paper, x, this.getPointY(point));
             point.line = this.line(this.lastPoint.pos(), point.pos());
-	}
-	else {
-	    point.render(this.paper, this.o.step, this.getPointY(point));
-	    point.line = this.line({ x: 0, y: point.pos().y }, point.pos());
-	}
-	this.lastPoint = point;
+        }
+        else {
+            point.render(this.paper, this.o.scaleWidth + 1, this.getPointY(point));
+            //point.line = this.line({ x: this.o.scaleWidth, y: point.pos().y }, point.pos());
+        }
+        this.lastPoint = point;
     },
 
     /**
@@ -71,19 +69,25 @@ Chart.prototype = {
      * @arg max Number
      */
     updateScale: function(min, max) {
+        this.calcScale(min, max);
+        this.updatePointsPosition();
+        this.renderScale();
+    },
+
+    calcScale: function(min, max) {
         this.min = Math.min(this.min, min);
         this.max = Math.max(this.max, max);
         var gap = (this.max - this.min) * 0.05;
         this.minDisplay = this.min - gap;
-        this.maxDisplay = this.max - gap;
-	this.scaleHeight = this.maxDisplay - this.minDisplay;
+        this.maxDisplay = this.max + gap;
+        this.scaleHeight = this.maxDisplay - this.minDisplay;        
     },
 
     getPointY: function(point) {
         var h = this.o.height,
-	    diff = point.value - this.minDisplay,
-	    rate = diff/this.scaleHeight;
-	return ~~(h * rate);
+            diff = point.value - this.minDisplay,
+            rate = diff/this.scaleHeight;
+        return h - ~~(h * rate);
     },
 
     loadingText: 'Loading...',
@@ -131,11 +135,35 @@ Chart.prototype = {
     },
 
     line: function(f, t) {
-	var p = 'M' + f.x + ',' + f.y +
-	        'L' + t.y + ',' + t.y,
-	    line = this.paper.path(p);
-	line.attr('stroke-width', 2);
-	return line;
+        var p = 'M' + f.x + ',' + f.y +
+                'L' + t.x + ',' + t.y,
+            line = this.paper.path(p);
+        line.attr({ 'stroke-width': 2, 'stroke-opacity': 0.5 });
+        return line;
+    },
+
+    renderScale: function() {
+        if ( this.scaleEl ) {
+            this.scaleEl.remove();
+        }
+        var el = this.scaleEl = this.paper.set(),
+            vert = this.line({ x: this.o.scaleWidth, y: this.o.height * 0.03 },
+                             { x: this.o.scaleWidth, y: this.o.height * 0.97 }),
+            horiz = this.line({ x: this.o.scaleWidth, y: this.o.height * 0.97 },
+                             { x: this.o.width, y: this.o.height * 0.97 });
+        el.push(vert, horiz);
+        return el;
+    },
+
+    updatePointsPosition: function() {
+        
+    },
+    
+    calcOptions: function(o) {
+        o.count = o.count || 25;
+        o.scaleWidth = Math.min(o.width * 0.05, 25);
+        o.step = (o.width - o.scaleWidth - 10) / o.count;
+        this.o = o;
     }
 };
 
@@ -146,21 +174,21 @@ var Point = function(datetime, value) {
 
 Point.prototype = {
     pos: function() {
-	return $.extend({}, this.position);
+        return $.extend({}, this.position);
     },
     
     setPos: function(x, y) {
-	this.position = {
-	    x: x,
-	    y: y
-	};
+        this.position = {
+            x: x,
+            y: y
+        };
     },
 
     render: function(p, x, y) {
-	this.setPos(x, y);
-	this.pointEl = p.circle(x, y, 1);
-	this.pointEl.attr('stroke-width', 2);
-	return this.pointEl;
+        this.setPos(x, y);
+        this.pointEl = p.circle(x, y, 1);
+        this.pointEl.attr('stroke-width', 3);
+        return this.pointEl;
     }
 };
 
