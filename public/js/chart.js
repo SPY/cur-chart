@@ -56,13 +56,11 @@ Chart.prototype = {
      * Add point to chart
      */
     renderPoint: function(point) {
-        var bot = this.o.bot + 20;
         if ( this.lastPoint ) {
-            var x = this.lastPoint.pos().x + this.o.step;
-            point.render(x, this.lastPoint);
+            point.render(this.lastPoint);
         }
         else {
-            point.render(this.o.scaleWidth + 1);
+            point.render();
         }
         this.lastPoint = point;
     },
@@ -113,6 +111,9 @@ Chart.prototype = {
            max = Math.max(max, this.value);
            this.move(-(self.o.step * num), 0);
         });
+        if ( this.points.length ) {
+            this.points[0].removeLine();            
+        }
         this.min = min;
         this.max = max;
     },
@@ -209,6 +210,9 @@ Chart.prototype = {
         o.bot = o.height - Math.max(o.height*0.04, 40);
         this.o = o;
     }
+
+    // drawning
+    
 };
 
 CurChart.Chart = Chart;

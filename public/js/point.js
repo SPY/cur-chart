@@ -28,8 +28,11 @@ Point.prototype = {
      * @arg labelY Number Y-cordinate of label
      * @arg prev Point Previous point on chart
      */
-    render: function(x, prev) {
+    render: function(prev) {
         var p = this.chart.paper,
+            x = prev ?
+                prev.pos().x + this.chart.o.step :
+                this.chart.o.scaleWidth + 1,
             y = this.calcYPosition();
 
         this.setPos(x, y);
@@ -66,7 +69,7 @@ Point.prototype = {
 
     move: function(dx, dy) {
         if ( typeof dy == 'undefined' ) {
-            dy = this.position.y - this.calcYPosition();
+            dy = this.calcYPosition() - this.position.y;
         }
         var x = this.position.x + dx,
             y = this.position.y + dy;
@@ -84,8 +87,13 @@ Point.prototype = {
     remove: function() {
         this.pointEl.remove();
         this.circle.remove();
-        this.line && this.line.remove();
+        this.removeLine();
         this.label.remove();
+    },
+
+    removeLine: function() {
+        this.line && this.line.remove();
+        this.line = null;
     },
 
     calcYPosition: function() {

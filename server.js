@@ -136,6 +136,11 @@ var controller = {
     }
 }
 
+function response404(response) {
+    response.writeHead(200, {'Content-Type': 'text/plain'});
+    response.write('404 Not Found\n');
+    response.end();
+}
 
 http.createServer(function(request, response) {
     if (request.url in controller) {
@@ -148,13 +153,18 @@ http.createServer(function(request, response) {
         uri = 'index.html';
     }
 
-    var filename = path.join(process.cwd(), 'public', uri);
+    var processcwd = process.cwd();
+    var filename = path.join(processcwd, 'public', uri);
+
+    if (filename.indexOf(processcwd) != 0) {
+        response404(response);
+        return;
+    }
+
     fs.stat(filename, function(error, stats) {
         if (error || stats.isDirectory()) {
             console.log("not exists: " + filename);
-            response.writeHead(200, {'Content-Type': 'text/plain'});
-            response.write('404 Not Found\n');
-            response.end();
+            response404(response);
         } else {
             var mimeType = mimeTypes[path.extname(filename).split(".")[1]];
             response.writeHead(200, {
