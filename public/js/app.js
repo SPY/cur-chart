@@ -3,6 +3,6 @@ $(function() {
 	chart.addData(data);
     }
 
-    var chart = new CurChart.Chart('#canvas', { width: 600, height: 400 }),
+    var chart = new CurChart.Chart('#canvas', { width: 800, height: 400 }),
         ds = new CurChart.DataSource(updateData);
 });

@@ -50,14 +50,14 @@ Chart.prototype = {
      * Add point to chart
      */
     renderPoint: function(point) {
+        var bot = this.o.bot + 10;
         if ( this.lastPoint ) {
             var x = this.lastPoint.pos().x + this.o.step;
-            point.render(this.paper, x, this.getPointY(point));
+            point.render(this.paper, x, this.getPointY(point), bot);
             point.line = this.line(this.lastPoint.pos(), point.pos());
         }
         else {
-            point.render(this.paper, this.o.scaleWidth + 1, this.getPointY(point));
-            //point.line = this.line({ x: this.o.scaleWidth, y: point.pos().y }, point.pos());
+            point.render(this.paper, this.o.scaleWidth + 1, this.getPointY(point), bot);
         }
         this.lastPoint = point;
     },
@@ -84,7 +84,7 @@ Chart.prototype = {
     },
 
     getPointY: function(point) {
-        var h = this.o.height,
+        var h = this.o.bot,
             diff = point.value - this.minDisplay,
             rate = diff/this.scaleHeight;
         return h - ~~(h * rate);
@@ -147,10 +147,28 @@ Chart.prototype = {
             this.scaleEl.remove();
         }
         var el = this.scaleEl = this.paper.set(),
-            vert = this.line({ x: this.o.scaleWidth, y: this.o.height * 0.03 },
-                             { x: this.o.scaleWidth, y: this.o.height * 0.97 }),
-            horiz = this.line({ x: this.o.scaleWidth, y: this.o.height * 0.97 },
-                             { x: this.o.width, y: this.o.height * 0.97 });
+            top = this.o.height * 0.03,
+            bot = this.o.bot,
+            sw = this.o.scaleWidth,
+            vert = this.line({ x: sw, y: top },
+                             { x: sw, y: bot }),
+            horiz = this.line({ x: sw, y: bot },
+                             { x: this.o.width, y: bot }),
+            vertStep = (bot - top) / 10,
+            vertValueStep = this.scaleHeight / 10; 
+        for(var i = 0; i <= 10; i++) {
+            var l = this.line({ x: sw - 5, y: bot - i*vertStep },
+                              { x: sw, y: bot - i*vertStep }),
+                t = this.paper.text(sw - this.o.scaleWidth/2 - 5, 
+                                bot - i*vertStep, 
+                                (this.minDisplay + i * vertValueStep).toFixed(2));
+            el.push(l, t);
+        }
+        for(var i = 0; i <= this.o.count; i++) {
+            var l = this.line({ x: sw + i*this.o.step, y: bot },
+                              { x: sw + i*this.o.step, y: bot + 3 });
+            el.push(l);
+        }
         el.push(vert, horiz);
         return el;
     },
@@ -160,9 +178,10 @@ Chart.prototype = {
     },
     
     calcOptions: function(o) {
-        o.count = o.count || 50;
-        o.scaleWidth = Math.min(o.width * 0.05, 25);
+        o.count = o.count || 30;
+        o.scaleWidth = Math.max(o.width * 0.05, 40);
         o.step = (o.width - o.scaleWidth - 10) / o.count;
+        o.bot = Math.max(o.height - o.height*0.04, 20);
         this.o = o;
     }
 };
@@ -184,18 +203,28 @@ Point.prototype = {
         };
     },
 
-    render: function(p, x, y) {
+    render: function(p, x, y, labelY) {
         this.setPos(x, y);
-        var e = this.pointEl = p.circle(x, y, 1);
+        this.pointEl = p.set();
+        
+        var e = this.circle = p.circle(x, y, 1);
         e.attr({'stroke-width': 3, 'fill': '#000' });
         e.attr('fill', '#000');
         e.hover($.proxy(this.onHover, this));
         e.mouseout($.proxy(this.onOut, this));
+        
+        var l = this.label = p.text(x, labelY, this.formatTime(this.datetime));
+
+        this.pointEl.push(e);
         return this.pointEl;
     },
 
+    formatTime: function(time) {
+        return time.getHours() + ':' + time.getMinutes();
+    },
+
     onHover: function() {
-        var el = this.pointEl;
+        var el = this.circle;
         el.toFront();
         el.animate({ 'stroke-width': 0, r: 5 }, this.animateTime);
     },

@@ -1,7 +1,8 @@
 var http = require('http'),
     url = require('url'),
     path = require('path'),
-    fs = require('fs');
+    fs = require('fs'),
+    qs = require('querystring');
 
 var mimeTypes = {
     "html": "text/html",
@@ -12,10 +13,24 @@ var mimeTypes = {
     "css": "text/css"
 };
 
+function getPostData(request, callback) {
+    var requestData = '';
+    request.on('data', function(chunk) {
+        requestData += chunk;
+    });
+    request.on('end', function(chunk) {
+        callback(qs.parse(requestData));
+    });
+}
+
 var DataSource = function (onDataReceive) {
     this.onDataReceive = onDataReceive;
 
-    this.onDataReceive(this.genInitialData());
+    var initialData = this.genInitialData();
+
+    if (typeof onDataReceive == 'function') {
+        onDataReceive(initialData);
+    }
     this.tick();
 };
 
@@ -39,7 +54,12 @@ DataSource.prototype = {
 
     onTick: function() {
         this.removeFirstDataItem();
-        this.onDataReceive([this.genNextValue()]);
+
+        var nextValue = this.genNextValue();
+
+        if (typeof this.onDataReceive == 'function') {
+            this.onDataReceive([nextValue]);
+        }
     },
 
     genNextValue: function() {
@@ -76,33 +96,58 @@ DataSource.prototype = {
 
     getLastDataItem: function() {
         return this.data[this.data.length - 1];
+    },
+
+    getDataSince: function(date) {
+        var result = [];
+
+        for (var i = 0; i < this.data.length; i++) {
+            var dataItem = this.data[i];
+
+            if (dataItem.datetime > date) {
+                result.push({
+                    datetime: +dataItem.datetime.valueOf(),
+                    value: +dataItem.value
+                });
+            }
+        }
+
+        return result;
     }
 };
 
+var dataSource = new DataSource;
+
 var controller = {
     '/statistic': function(request, response) {
-        response.writeHead(200, {
-            "Content-Type": "application/json"
+        getPostData(request, function(postData) {
+            var lastDateTimestamp = (postData && +postData.lastDate) || 0;
+
+            response.writeHead(200, {
+                "Content-Type": "application/json"
+            });
+
+            response.write(JSON.stringify({
+                data: dataSource.getDataSince(new Date(lastDateTimestamp))
+            }));
+
+            response.end();
         });
-        console.log('------>');
-        for (var key in request) {
-            console.log('   |', key );
-        }
-        response.write(JSON.stringify(request.body || {}));
-        response.end();
     }
 }
 
 
 http.createServer(function(request, response) {
     if (request.url in controller) {
-      return controller[request.url](request, response);
+        return controller[request.url](request, response);
     }
 
     var uri = url.parse(request.url).pathname;
+
     if (uri == '/') {
         uri = 'index.html';
     }
+
     var filename = path.join(process.cwd(), 'public', uri);
     fs.stat(filename, function(error, stats) {
         if (error || stats.isDirectory()) {
@@ -120,22 +165,4 @@ http.createServer(function(request, response) {
             fileStream.pipe(response);
         }
     });
-    /*
-    path.exists(filename, function(exists) {
-        if(!exists) {
-            console.log("not exists: " + filename);
-            response.writeHead(200, {'Content-Type': 'text/plain'});
-            response.write('404 Not Found\n');
-            response.end();
-        } else {
-            var mimeType = mimeTypes[path.extname(filename).split(".")[1]];
-            response.writeHead(200, {
-                'Content-Type': mimeType
-            });
-
-            var fileStream = fs.createReadStream(filename);
-            fileStream.pipe(response);
-        }
-    }); //end path.exists
-    */
 }).listen(8888);

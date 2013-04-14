@@ -72,7 +72,7 @@ CurChart.DataSource = DataSource;
 $.ajax('/statistic', {
     type: 'POST',
     data: {
-        lastDate: (new Date)
+        lastDate: (new Date).valueOf() - 5000
     },
     success: function () {
         console.log( 'ajax', arguments );
