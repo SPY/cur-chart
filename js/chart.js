@@ -27,12 +27,12 @@ Chart.prototype = {
         max;
 
 	$.each(data, function() {
-		   var point = new Point(this.datetime, this.value);
-		   min = Math.min(this.value, min);
-		   max = Math.max(this.value, max);
-		   self.points.push(point);
-		   forRender.push(point);
-	       });
+	    var point = new Point(this.datetime, this.value);
+	    min = Math.min(this.value, min);
+	    max = Math.max(this.value, max);
+	    self.points.push(point);
+	    forRender.push(point);
+	});
 
 	this.updateScale(self.min, self.max);
 	$.each(forRender, $.proxy(this.renderPoint, this));
@@ -71,25 +71,29 @@ Chart.prototype = {
             this.loadingBox.show();	    
 	}
 	else {
-	    var p = this.paper,
-	        l = this.loadingBox = p.set(),
-	        W = 100, H = 30,
-	        pos = {
-		    x: this.o.width/2 - W/2,
-		    y: this.o.height/2 - H/2,
-		    width: W,
-		    height: H
-		},
-	        border = p.rect(pos.x, pos.y, pos.width, pos.height, 5),
-	        text = p.text(this.o.width/2, this.o.height/2, this.loadingText);
-	    border.attr({
-                'stroke': '#000',
-		'stroke-width': 2
-	    });
-	    l.push(border, text);
+	    this.loadingBox = this.renderLoadingBox(this.paper);
 	}
 
 	this.loadingBox.visible = true;
+    },
+
+    renderLoadingBox: function(p) {
+	var l = this.loadingBox = p.set(),
+	    W = 100, H = 30,
+	    pos = {
+		x: this.o.width/2 - W/2,
+		y: this.o.height/2 - H/2,
+		width: W,
+		height: H
+	    },
+	    border = p.rect(pos.x, pos.y, pos.width, pos.height, 5),
+	    text = p.text(this.o.width/2, this.o.height/2, this.loadingText);
+	border.attr({
+	    'stroke': '#000',
+	    'stroke-width': 2
+	});
+	l.push(border, text);
+        return l;	
     },
 
     stopLoading: function() {
@@ -101,7 +105,7 @@ Chart.prototype = {
     },
 
     isLoading: function() {
-	return this.loading;
+	return !!(this.loadingBox && this.loadingBox.visible);
     }
 };
 
