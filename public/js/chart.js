@@ -87,6 +87,13 @@ Chart.prototype = {
         this.scaleHeight = this.maxDisplay - this.minDisplay;        
     },
 
+    updatePointsPosition: function() {
+        var self = this;
+        $.each(this.points, function() {
+            this.move(this.pos().x, self.getPointY(this));
+        });
+    },
+    
     getPointY: function(point) {
         var h = this.o.bot,
             diff = point.value - this.minDisplay,
@@ -179,13 +186,6 @@ Chart.prototype = {
         return el;
     },
 
-    updatePointsPosition: function() {
-        var self = this;
-        $.each(this.points, function() {
-            this.move(this.pos().x, self.getPointY(this));
-        });
-    },
-    
     calcOptions: function(o) {
         o.count = o.count || 60;
         o.scaleWidth = Math.max(o.width * 0.05, 40);
@@ -227,11 +227,7 @@ Point.prototype = {
         this.setPos(x, y);
         this.pointEl = p.set();
         
-        var e = this.circle = p.circle(x, y, 1);
-        e.attr({'stroke-width': 3, 'fill': '#000' });
-        e.attr('fill', '#000');
-        e.hover($.proxy(this.onHover, this));
-        e.mouseout($.proxy(this.onOut, this));
+        var e = this.renderPoint(p, x, y);
         
         if ( prev ) {
             this.prev = prev;
@@ -247,10 +243,19 @@ Point.prototype = {
         return this.pointEl;
     },
 
+    renderPoint: function(p, x, y) {
+        var e = this.circle = p.circle(x, y, 1);
+        e.attr({'stroke-width': 3, 'fill': '#000' });
+        e.attr('fill', '#000');
+        e.hover($.proxy(this.onHover, this));
+        e.mouseout($.proxy(this.onOut, this));        
+        return e;
+    },
+
     move: function(x, y) {
-        var dx = this.origin.x - x,
-            dy = this.origin.y - y;
-        this.circle.animate({ 'transform': 't' + dx + ',' + dy }, 100);
+        this.circle.remove();
+        this.renderPoint(this.chart.paper, x, y);
+        this.setPos(x, y);
         if ( this.line ) {
             this.line.remove();
             this.line = this.chart.line(this.prev.pos(), this.pos());

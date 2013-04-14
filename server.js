@@ -39,7 +39,7 @@ function addSeconds(data, seconds) {
 }
 
 function genNextValue(prevValue) {
-    return prevValue * (1 + (Math.random() - 0.5) / 10)
+    return prevValue * (1 + (Math.random() - 0.3) / 10)
 }
 
 DataSource.prototype = {
