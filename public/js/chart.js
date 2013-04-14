@@ -9,7 +9,7 @@ var Chart = function(canvasSelector, options) {
     o.width = o.width || el.width();
     o.height = o.height || el.height();
     this.calcOptions(o);
-    window.pap = this.paper = Raphael(el.get(0), o.width, o.height);
+    this.paper = Raphael(el.get(0), o.width, o.height);
     this.points = [];
     this.startLoading();
     this.max = 0;
@@ -29,10 +29,9 @@ Chart.prototype = {
             max = 0;
 
         $.each(data, function() {
-            var point = new Point(this.datetime, this.value);
+            var point = new Point(self, this.datetime, this.value);
             min = Math.min(this.value, min);
             max = Math.max(this.value, max);
-            self.points.push(point);
             forRender.push(point);
         });
 
@@ -40,7 +39,7 @@ Chart.prototype = {
         $.each(forRender, function() {
             self.renderPoint(this);        
         });
-
+        this.points = this.points.concat(forRender);
         if ( this.isLoading() ) {
             this.stopLoading();
         }
@@ -50,14 +49,13 @@ Chart.prototype = {
      * Add point to chart
      */
     renderPoint: function(point) {
-        var bot = this.o.bot + 10;
+        var bot = this.o.bot + 20;
         if ( this.lastPoint ) {
             var x = this.lastPoint.pos().x + this.o.step;
-            point.render(this.paper, x, this.getPointY(point), bot);
-            point.line = this.line(this.lastPoint.pos(), point.pos());
+            point.render(this, x, this.getPointY(point), bot, this.lastPoint);
         }
         else {
-            point.render(this.paper, this.o.scaleWidth + 1, this.getPointY(point), bot);
+            point.render(this, this.o.scaleWidth + 1, this.getPointY(point), bot);
         }
         this.lastPoint = point;
     },
@@ -74,6 +72,12 @@ Chart.prototype = {
         this.renderScale();
     },
 
+    /**
+     * Recalculate scale borders
+     * 
+     * @arg min Number
+     * @arg max Number
+     */
     calcScale: function(min, max) {
         this.min = Math.min(this.min, min);
         this.max = Math.max(this.max, max);
@@ -156,6 +160,7 @@ Chart.prototype = {
                              { x: this.o.width, y: bot }),
             vertStep = (bot - top) / 10,
             vertValueStep = this.scaleHeight / 10; 
+        
         for(var i = 0; i <= 10; i++) {
             var l = this.line({ x: sw - 5, y: bot - i*vertStep },
                               { x: sw, y: bot - i*vertStep }),
@@ -164,6 +169,7 @@ Chart.prototype = {
                                 (this.minDisplay + i * vertValueStep).toFixed(2));
             el.push(l, t);
         }
+        
         for(var i = 0; i <= this.o.count; i++) {
             var l = this.line({ x: sw + i*this.o.step, y: bot },
                               { x: sw + i*this.o.step, y: bot + 3 });
@@ -174,21 +180,25 @@ Chart.prototype = {
     },
 
     updatePointsPosition: function() {
-        
+        var self = this;
+        $.each(this.points, function() {
+            this.move(this.pos().x, self.getPointY(this));
+        });
     },
     
     calcOptions: function(o) {
-        o.count = o.count || 30;
+        o.count = o.count || 60;
         o.scaleWidth = Math.max(o.width * 0.05, 40);
         o.step = (o.width - o.scaleWidth - 10) / o.count;
-        o.bot = Math.max(o.height - o.height*0.04, 20);
+        o.bot = o.height - Math.max(o.height*0.04, 40);
         this.o = o;
     }
 };
 
-var Point = function(datetime, value) {
+var Point = function(chart, datetime, value) {
     this.datetime = datetime;
     this.value = value;
+    this.chart = chart;
 }
 
 Point.prototype = {
@@ -202,8 +212,18 @@ Point.prototype = {
             y: y
         };
     },
-
-    render: function(p, x, y, labelY) {
+    
+    /**
+     * Render point on chart
+     * 
+     * @arg c Chart Chart object
+     * @arg x Number
+     * @arg y Number
+     * @arg labelY Number Y-cordinate of label
+     * @arg prev Point Previous point on chart
+     */
+    render: function(c, x, y, labelY, prev) {
+        var p = c.paper;
         this.setPos(x, y);
         this.pointEl = p.set();
         
@@ -213,14 +233,32 @@ Point.prototype = {
         e.hover($.proxy(this.onHover, this));
         e.mouseout($.proxy(this.onOut, this));
         
-        var l = this.label = p.text(x, labelY, this.formatTime(this.datetime));
+        if ( prev ) {
+            this.prev = prev;
+            var line = c.line(prev.pos(), this.pos());
+            this.line = line;
+        }
 
-        this.pointEl.push(e);
+        var l = this.label = p.text(x, labelY, this.formatTime(this.datetime));
+        l.transform('r90');
+        
+        this.pointEl.push(e, l);
+        this.origin = { x: x, y: y };
         return this.pointEl;
     },
 
+    move: function(x, y) {
+        var dx = this.origin.x - x,
+            dy = this.origin.y - y;
+        this.circle.animate({ 'transform': 't' + dx + ',' + dy }, 100);
+        if ( this.line ) {
+            this.line.remove();
+            this.line = this.chart.line(this.prev.pos(), this.pos());
+        }
+    },
+
     formatTime: function(time) {
-        return time.getHours() + ':' + time.getMinutes();
+        return time.getMinutes() + ':' + time.getSeconds();
     },
 
     onHover: function() {

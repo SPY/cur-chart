@@ -1,5 +1,20 @@
 (function(CurChart) {
 
+function transformDataArrayFromServerFormat(data) {
+    var result = [];
+
+    for (var i = 0; i < data.length; i++) {
+        var item = data[i];
+
+        result.push({
+            datetime: new Date(+item.datetime),
+            value: item.value
+        });
+    }
+
+    return result;
+}
+/*
 var DataSource = function (onDataReceive) {
     this.onDataReceive = onDataReceive;
 
@@ -67,16 +82,42 @@ DataSource.prototype = {
     }
 };
 
-CurChart.DataSource = DataSource;
+*/
 
-$.ajax('/statistic', {
-    type: 'POST',
-    data: {
-        lastDate: (new Date).valueOf() - 5000
-    },
-    success: function () {
-        console.log( 'ajax', arguments );
+function DataSource(onDataReceive) {
+    this.lastDate = 0;
+    this.onDataReceive = onDataReceive;
+
+    this.tick();
+    this.data = [];
+}
+
+DataSource.prototype = {
+    tick: function(){
+        var self = this;
+
+        setTimeout(function() {
+            $.ajax('/statistic', {
+                type: 'POST',
+                data: {
+                    lastDate: self.lastDate
+                },
+                success: function (response) {
+                    var d = response.data;
+
+                    self.lastDate = +d[d.length - 1].datetime;
+
+                    self.onDataReceive && self.onDataReceive(
+                        transformDataArrayFromServerFormat(d)
+                    );
+
+                    self.tick();
+                }
+            });
+        }, 1000);
     }
-});
+}
+
+CurChart.DataSource = DataSource;
 
 })(window.CurChart || (window.CurChart = {}));

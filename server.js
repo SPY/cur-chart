@@ -73,8 +73,8 @@ DataSource.prototype = {
         return newData;
     },
 
-    removeFirstDataItem: function () {
-        this.data.unshift();
+    removeFirstDataItem: function() {
+        this.data.shift();
     },
 
     genInitialData: function() {
