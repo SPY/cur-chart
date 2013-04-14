@@ -69,4 +69,14 @@ DataSource.prototype = {
 
 CurChart.DataSource = DataSource;
 
+$.ajax('/statistic', {
+    type: 'POST',
+    data: {
+        lastDate: (new Date)
+    },
+    success: function () {
+        console.log( 'ajax', arguments );
+    }
+});
+
 })(window.CurChart || (window.CurChart = {}));

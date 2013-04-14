@@ -84,6 +84,10 @@ var controller = {
         response.writeHead(200, {
             "Content-Type": "application/json"
         });
+        console.log('------>');
+        for (var key in request) {
+            console.log('   |', key );
+        }
         response.write(JSON.stringify(request.body || {}));
         response.end();
     }

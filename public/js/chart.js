@@ -9,7 +9,7 @@ var Chart = function(canvasSelector, options) {
     o.width = o.width || el.width();
     o.height = o.height || el.height();
     this.calcOptions(o);
-    this.paper = Raphael(el.get(0), o.width, o.height);
+    window.pap = this.paper = Raphael(el.get(0), o.width, o.height);
     this.points = [];
     this.startLoading();
     this.max = 0;
@@ -160,7 +160,7 @@ Chart.prototype = {
     },
     
     calcOptions: function(o) {
-        o.count = o.count || 25;
+        o.count = o.count || 50;
         o.scaleWidth = Math.min(o.width * 0.05, 25);
         o.step = (o.width - o.scaleWidth - 10) / o.count;
         this.o = o;
@@ -186,10 +186,25 @@ Point.prototype = {
 
     render: function(p, x, y) {
         this.setPos(x, y);
-        this.pointEl = p.circle(x, y, 1);
-        this.pointEl.attr('stroke-width', 3);
+        var e = this.pointEl = p.circle(x, y, 1);
+        e.attr({'stroke-width': 3, 'fill': '#000' });
+        e.attr('fill', '#000');
+        e.hover($.proxy(this.onHover, this));
+        e.mouseout($.proxy(this.onOut, this));
         return this.pointEl;
-    }
+    },
+
+    onHover: function() {
+        var el = this.pointEl;
+        el.toFront();
+        el.animate({ 'stroke-width': 0, r: 5 }, this.animateTime);
+    },
+
+    onOut: function() {
+        this.pointEl.animate({ 'stroke-width': 3, r: 1 }, this.animateTime);
+    },
+
+    animateTime: 200
 };
 
 CurChart.Chart = Chart;
