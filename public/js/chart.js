@@ -27,9 +27,13 @@ Chart.prototype = {
             forRender = [],
             min = Infinity,
             max = 0;
+        
+        if ( data.length > this.o.count ) {
+            data.splice(0, data.length - this.o.count);
+        }
 
         $.each(data, function() {
-            var point = new Point(self, this.datetime, this.value);
+            var point = new CurChart.Point(self, this.datetime, this.value);
             min = Math.min(this.value, min);
             max = Math.max(this.value, max);
             forRender.push(point);
@@ -55,10 +59,10 @@ Chart.prototype = {
         var bot = this.o.bot + 20;
         if ( this.lastPoint ) {
             var x = this.lastPoint.pos().x + this.o.step;
-            point.render(this, x, this.getPointY(point), this.lastPoint);
+            point.render(x, this.lastPoint);
         }
         else {
-            point.render(this, this.o.scaleWidth + 1, this.getPointY(point));
+            point.render(this.o.scaleWidth + 1);
         }
         this.lastPoint = point;
     },
@@ -93,7 +97,7 @@ Chart.prototype = {
     updatePointsPosition: function() {
         var self = this;
         $.each(this.points, function() {
-            this.move(0, -this.pos().y + self.getPointY(this));
+            this.move(0);
         });
     },
     
@@ -111,13 +115,6 @@ Chart.prototype = {
         });
         this.min = min;
         this.max = max;
-    },
-
-    getPointY: function(point) {
-        var h = this.o.bot,
-            diff = point.value - this.minDisplay,
-            rate = diff/this.scaleHeight;
-        return h - ~~(h * rate);
     },
 
     loadingText: 'Loading...',
@@ -206,7 +203,7 @@ Chart.prototype = {
     },
 
     calcOptions: function(o) {
-        o.count = o.count || 60;
+        o.count = o.count || 40;
         o.scaleWidth = Math.max(o.width * 0.05, 40);
         o.step = (o.width - o.scaleWidth - 10) / o.count;
         o.bot = o.height - Math.max(o.height*0.04, 40);
@@ -214,110 +211,6 @@ Chart.prototype = {
     }
 };
 
-var Point = function(chart, datetime, value) {
-    this.datetime = datetime;
-    this.value = value;
-    this.chart = chart;
-}
-
-Point.prototype = {
-    pos: function() {
-        return $.extend({}, this.position);
-    },
-    
-    setPos: function(x, y) {
-        this.position = {
-            x: x,
-            y: y
-        };
-    },
-    
-    /**
-     * Render point on chart
-     * 
-     * @arg c Chart Chart object
-     * @arg x Number
-     * @arg y Number
-     * @arg labelY Number Y-cordinate of label
-     * @arg prev Point Previous point on chart
-     */
-    render: function(c, x, y, prev) {
-        var p = c.paper;
-        this.setPos(x, y);
-        this.pointEl = p.set();
-        
-        var e = this.renderPoint(p, x, y);
-        
-        if ( prev ) {
-            this.prev = prev;
-            var line = c.line(prev.pos(), this.pos());
-            this.line = line;
-        }
-
-        var l = this.renderLabel(p, x);
-        
-        this.pointEl.push(e, l);
-        return this.pointEl;
-    },
-
-    renderPoint: function(p, x, y) {
-        var e = this.circle = p.circle(x, y, 1);
-        e.attr({'stroke-width': 3, 'fill': '#000' });
-        e.attr('fill', '#000');
-        e.hover($.proxy(this.onHover, this));
-        e.mouseout($.proxy(this.onOut, this));        
-        return e;
-    },
-
-    renderLabel: function(p, x) {
-        var l = this.label = p.text(x, this.chart.o.bot + 20, this.formatTime(this.datetime));
-        l.transform('r90');
-        return l;        
-    },
-
-    move: function(dx, dy) {
-        var x = this.position.x + dx,
-            y = this.position.y + dy;
-        this.circle.remove();
-        this.renderPoint(this.chart.paper, x, y);
-        this.setPos(x, y);
-        if ( this.line ) {
-            this.line.remove();
-            this.line = this.chart.line(this.prev.pos(), this.pos());
-        }
-        this.label.remove();
-        this.renderLabel(this.chart.paper, x);
-    },
-
-    remove: function() {
-        this.pointEl.remove();
-        this.circle.remove();
-        this.line && this.line.remove();
-        this.label.remove();
-    },
-
-    formatTime: function(time) {
-        var m = time.getMinutes(),
-            s = time.getSeconds();
-        m = m > 9 ? m : '0' + m;
-        s = s > 9 ? s : '0' + s;
-        return m  + ':' + s;
-    },
-
-    onHover: function() {
-        var el = this.circle;
-        el.toFront();
-        el.animate({ 'stroke-width': 0, r: 5 }, this.animateTime);
-    },
-
-    onOut: function() {
-        this.pointEl.animate({ 'stroke-width': 3, r: 1 }, this.animateTime);
-    },
-
-    animateTime: 200
-};
-
 CurChart.Chart = Chart;
-CurChart.Point = Point;
 
 })(window.CurChart || (window.CurChart = {}));
