@@ -3,7 +3,7 @@
 var DataSource = function (onDataReceive) {
     this.onDataReceive = onDataReceive;
 
-    this.genInitialData();
+    this.onDataReceive(this.genInitialData());
     this.tick();
 };
 
@@ -27,7 +27,7 @@ DataSource.prototype = {
 
     onTick: function() {
         this.removeFirstDataItem();
-        this.onDataReceive(this.genNextValue());
+        this.onDataReceive([this.genNextValue()]);
     },
 
     genNextValue: function() {
@@ -58,9 +58,7 @@ DataSource.prototype = {
                 value: genNextValue(this.getLastDataItem().value)
             });
         }
-    },
 
-    getInitialData: function() {
         return this.data;
     },
 
