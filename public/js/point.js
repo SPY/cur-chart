@@ -8,10 +8,17 @@ var Point = function(chart, datetime, value) {
 }
 
 Point.prototype = {
+    /** 
+     * Return position of point
+     */
     pos: function() {
         return $.extend({}, this.position);
     },
     
+    /**
+     * @private
+     * Set position of point
+     */
     setPos: function(x, y) {
         this.position = {
             x: x,
@@ -22,10 +29,6 @@ Point.prototype = {
     /**
      * Render point on chart
      * 
-     * @arg c Chart Chart object
-     * @arg x Number
-     * @arg y Number
-     * @arg labelY Number Y-cordinate of label
      * @arg prev Point Previous point on chart
      */
     render: function(prev) {
@@ -52,6 +55,7 @@ Point.prototype = {
         return this.pointEl;
     },
 
+    // draw point on paper
     renderPoint: function(p, x, y) {
         var e = this.circle = p.circle(x, y, 1);
         e.attr({'stroke-width': 3, 'fill': '#000' });
@@ -61,29 +65,43 @@ Point.prototype = {
         return e;
     },
 
+    // draw label on horizontal scale
     renderLabel: function(p, x) {
         var l = this.label = p.text(x, this.chart.o.bot + 20, this.formatTime(this.datetime));
         l.transform('r90');
         return l;        
     },
 
+
+    /**
+     * Update point position
+     * It called on scale update and move then pointes removed
+     */
     update: function(dx, dy) {
         if ( typeof dy == 'undefined' ) {
             dy = this.calcYPosition() - this.position.y;
         }
         var x = this.position.x + (dx || 0),
             y = this.position.y + dy;
+	// redraw point
         this.circle.remove();
         this.renderPoint(this.chart.paper, x, y);
         this.setPos(x, y);
+	// rerender line if it exist
         if ( this.line ) {
             this.line.remove();
             this.line = this.chart.line(this.prev.pos(), this.pos());
         }
-        this.label.remove();
-        this.renderLabel(this.chart.paper, x);
+	// redraw render if x position changed
+	if ( dx ) {
+            this.label.remove();
+            this.renderLabel(this.chart.paper, x);
+	}
     },
 
+    /**
+     * Remove point from chart
+     */
     remove: function() {
         this.pointEl.remove();
         this.circle.remove();
@@ -91,11 +109,17 @@ Point.prototype = {
         this.label.remove();
     },
 
+    /**
+     * Remove point line
+     */
     removeLine: function() {
         this.line && this.line.remove();
         this.line = null;
     },
 
+    /**
+     * Return point y-position depend on scale
+     */
     calcYPosition: function() {
         var h = this.chart.o.bot,
             diff = this.value - this.chart.minDisplay,
