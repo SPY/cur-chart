@@ -1,2 +1,2 @@
 #!/bin/bash
-nodejs server.js
+node server.js

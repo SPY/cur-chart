@@ -67,11 +67,11 @@ Point.prototype = {
         return l;        
     },
 
-    move: function(dx, dy) {
+    update: function(dx, dy) {
         if ( typeof dy == 'undefined' ) {
             dy = this.calcYPosition() - this.position.y;
         }
-        var x = this.position.x + dx,
+        var x = this.position.x + (dx || 0),
             y = this.position.y + dy;
         this.circle.remove();
         this.renderPoint(this.chart.paper, x, y);
